@@ -7,44 +7,50 @@
 	int end, pos; /*0 esquerda 1 direita*/
  } endereco;
 
- typedef struct palavras{
-	int num_linha, inst_esq, pal_esq, inst_dir, pal_dir;  
- } palavra;
-
  typedef struct rotulo{
 	char nome[100];
 	endereco endereco;
 	struct rotulo *prox;
  } rotulo;
-
- /* Funcoes de reconhecimento de elementos de linguagem de montagem*/
- void diretivas(char *str, endereco *end, palavra *mapa);
- void rotulos(char *str, endereco *end, rotulo *rot);
- void instrucoes(char *str, endereco *end, palavra *mapa, rotulo *rot);
-
-  /* Funcoes de Listas Ligadas adaptadas para o montador */
+ 
+ typedef struct palavras{
+	int num_linha, pal_esq,  pal_dir;
+	char inst_esq[2], inst_dir[2];
+	struct palavras *prox;  
+ } palavra;
+ 
+ /* Funcoes de Listas Ligadas para o Mapa de Rotulos */
  void InicializaMapaRotulos(rotulo *inicio);
  void InsereRotuloFim(rotulo *inicio, char *token, endereco end);
  void ImprimeRotulos(rotulo *inicio);
- void LiberaRotulos(rotulo *inicio);
-
+ void LiberaRotulos(rotulo *inicio); 
+ /* Funcoes de Listas Ligadas para o Mapa de Memoria */
+ void InicializaMapaMemoria(palavra *inicio);
+ void InserePalavraFim(palavra *inicio, char *token, endereco end);
+/* void ImprimePalavras(palavra *inicio);*/
+ void LiberaMapaPalavras(palavra *inicio);
+ void preencher_mapa(palavra *inicio, endereco *end_, char instrucao[2], char *token);
+ void ImprimePalavras(palavra *inicio);
+ endereco muda_Endereco(endereco *end_);
+ 
  int main(int argc, char *argv[]){
 	FILE *arq_entrada; /* associado ao arquivo de entrada */
 	FILE *arq_saida; /* associado ao arquivo de saida */
 	char delim[] = " \n";/*delimitadores dos tokens*/
 	char str[1001];/*string referente a cada linha*/
 	char *token;/*string referente a cada token*/
-	int tam; /* auxiliar */
-	palavra *mapa; /* mapa de memoria */
-	rotulo mapa_rot; /* mapa de rotulos */
- 	endereco end = {0,0}; /* ponteiro de endereco */
+	int tam;
+	rotulo mapa_rot;	
+	palavra mapa_mem;
+	endereco end = {0,0};
 	
 	arq_entrada = fopen(argv[1],"r");/*abre o arquivo para leitura*/
 
 	arq_saida = fopen(argv[2],"w");/*abre o arquivo para escrita*/
 	
-	/* Inicializa mapa dos rotulos */
+	/* Inicializa mapa dos rotulos e memoria */
 	InicializaMapaRotulos(&mapa_rot);
+	InicializaMapaMemoria(&mapa_mem);
 
 	/* PRIMEIRA LEITURA DO ARQUIVO - MAPA DE ROTULOS */
 	while(!feof(arq_entrada)){	
@@ -68,7 +74,7 @@
 			}
 			/* TESTAR SE EH NECESSARIO INTERPRETAR INSTRUCOES NA PRIMEIRA LEITURA */
 			else{
-			  instrucoes(token, end, mapa, mapa_rot);	
+				instrucoes(token, end, &mapa_mem, &mapa_rot);	
 			}
 		token = strtok(NULL, delim);
 		}
@@ -95,22 +101,24 @@
 			}
 			/* Se nao eh nenhum desses, eh uma instrucao */
 			else{
-				instrucoes(token, end, mapa, rot);	
+				instrucoes(token, end, &mapa_mem, &mapa_rot);	
 			}
 		token = strtok(NULL, delim);
 		}
    	}
 
 	/* Percorrer mapa de memoria e preencher vazios com zeros */
-	preencher_zeros(mapa);
+	preencher_zeros(mapa_mem);
 
 	/* Escrever arquivo de saida */
-	hexadecimal(mapa);
+	hexadecimal(mapa_mem);
 
 	ImprimeRotulos(&mapa_rot);
+   	ImprimePalavras(&mapa_mem); 	
    	
    	LiberaRotulos(&mapa_rot);
-
+   	LiberaMapaPalavras(&mapa_mem);
+   	
 	fclose(arq_entrada);/*fecha o arquivo de entrada*/
 
 	fclose(arq_saida);/*fecha o arquivo de saida*/
@@ -158,40 +166,82 @@
 		break;
 	}
 }
-endereco* muda_Endereco(endereco *end_){
+ endereco muda_Endereco(endereco *end_){
 
     endereco aux;
-    aux.endereco = end_->endereco;
+    aux.end = end_->end;
 
-    if((end_->pos == 0) && (end_->endereco == 0)){
-      end_->endereco == aux.endereco;
-        end_->pos = 0;
-    }
-
-    else if(end_->pos == 1){
-        end_->endereco == aux.endereco + 1;
-        end_->pos = 0;
-    }
-
-    else if(end_->pos == 0){
+    
+    if(end_->pos == 0){
         end_->pos = 1;
     }
-return end_;
-}
-
-void preencher_mapa(endereco *end_, palavra *mapa, char *instrucao, char *str){
-
-    mapa->num_linha = end_->endereco;
-        if(end_->pos == 0){
-        mapa->inst_esq = instrucao;
- //       mapa->pal_esq = verifica(str);//se nao for rotulo, PENSAR NESSA PARTEEEEEEEEEE
-    }
 
     else if(end_->pos == 1){
-        mapa->inst_dir = instrucao;
-  //      mapa->pal_dir = verifica(str);
+      end_->end++;
+      end_->pos = 0;
     }
-}
+
+	return (*end_);
+ }
+
+ void preencher_mapa(palavra *inicio, endereco *end_, char instrucao[2], char *token){
+	palavra *novo,*temp;
+
+    /* Teste se a palavra a ser inserida eh na esquerda */
+    if(end_->pos == 0){
+    	novo = (palavra*)malloc(sizeof(palavra));
+    	novo->num_linha = end_->end;
+    	novo->pal_esq = (int)strtol(token, NULL, 0);
+    	novo->pal_dir = 0;
+    	strcpy(novo->inst_esq,instrucao);		
+    	strcpy(novo->inst_dir,"00");
+    	novo->prox=NULL;
+    	
+    	/* Percorre a lista ate o fim e insere o novo noh */
+    	temp = inicio;
+   		while(temp->prox!=NULL){
+			temp = temp->prox;
+		}
+			temp->prox = novo;
+	/* Caso de ser inserida na direita, testar primeiro se o noh realmente existe */
+    }else if(end_->pos == 1){	
+    	temp = inicio;
+    	while(temp->prox!=NULL || temp->num_linha != end_->end){
+			temp = temp->prox;
+      	}
+      	if(temp->num_linha == end_->end){
+			temp->num_linha = end_->end;
+			temp->pal_dir = (int)strtol(token, NULL, 0);
+			strcpy(temp->inst_dir,instrucao);
+      	}else{
+	  		novo = (palavra*)malloc(sizeof(palavra));
+	  		novo->num_linha = end_->end;
+	  		novo->pal_dir = (int)strtol(token, NULL, 0);
+	  		strcpy(novo->inst_dir,instrucao);
+	  		novo->prox=NULL;
+	  		temp->prox = novo;
+		}
+    }
+
+ }
+ 
+ void LiberaMapaPalavras(palavra *inicio) {
+
+   palavra *temp;
+
+	for(temp = inicio->prox; temp != NULL; temp = temp-> prox){
+		free(temp);
+	}
+  }
+
+ void ImprimePalavras(palavra *inicio){
+ 	palavra *temp;
+ 	
+	for(temp = inicio->prox; temp != NULL; temp = temp->prox){
+	  printf("lin %d inst_esq %c%c pal_esq %d inst_dir %c%c pal_dir %d\n", temp->num_linha, temp->inst_esq[0], temp->inst_esq[1], temp->pal_esq, temp->inst_dir[0], temp->inst_dir[1], temp->pal_dir);
+	}
+ }
+
 
  //int verifica(char *str){
    //  char c = str[0];
@@ -360,4 +410,16 @@ void instrucoes(char str[], endereco *end, palavra *mapa, rotulo *rot){
 		printf("no endereco %d e posicao %d", temp->endereco.end, temp->endereco.pos);
 		printf("\n");
 	}
+}
+
+ endereco ProcuraRotulo(rotulo *inicio, char *token){
+ 	rotulo *temp;
+ 
+	for(temp = inicio->prox; temp != NULL; temp = temp->prox){
+        if (!strcmp(temp->nome, token)){
+	  		return temp->endereco;
+        }
+        temp = temp->prox;
+    }
+	return;
 }
