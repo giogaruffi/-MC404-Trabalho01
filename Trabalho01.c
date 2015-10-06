@@ -158,7 +158,167 @@
 		break;
 	}
 }
+endereco* muda_Endereco(endereco *end_){
 
+    endereco aux;
+    aux.endereco = end_->endereco;
+
+    if((end_->pos == 0) && (end_->endereco == 0)){
+      end_->endereco == aux.endereco;
+        end_->pos = 0;
+    }
+
+    else if(end_->pos == 1){
+        end_->endereco == aux.endereco + 1;
+        end_->pos = 0;
+    }
+
+    else if(end_->pos == 0){
+        end_->pos = 1;
+    }
+return end_;
+}
+
+void preencher_mapa(endereco *end_, palavra *mapa, char *instrucao, char *str){
+
+    mapa->num_linha = end_->endereco;
+        if(end_->pos == 0){
+        mapa->inst_esq = instrucao;
+ //       mapa->pal_esq = verifica(str);//se nao for rotulo, PENSAR NESSA PARTEEEEEEEEEE
+    }
+
+    else if(end_->pos == 1){
+        mapa->inst_dir = instrucao;
+  //      mapa->pal_dir = verifica(str);
+    }
+}
+
+ //int verifica(char *str){
+   //  char c = str[0];
+
+ //if(strcmp(c ,".") == 0){
+ //eh rotulo, ver como esta as funcoes de rotulo
+ //}
+
+ //else{
+   //return strtol(str,NULL, 16);
+ //}
+//}
+
+void instrucoes(char str[], endereco *end, palavra *mapa, rotulo *rot){
+
+    char *token;
+    char *aux;
+
+    if(strcmp(str,  "LDMQ") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"0A","000");
+    }
+    else if(strcmp(str,  "LDMQM") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"09",token);
+    }
+    else if(strcmp(str,  "STR") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"21",token);
+    }
+    else if(strcmp(str,  "LOAD") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"01",token);
+    }
+    else if(strcmp(str,  "LDN") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"02",token);
+    }
+    else if(strcmp(str,  "LDABS") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"03",token);
+    }
+    else if(strcmp(str,  "JMP") == 0){
+//verificar esquerda e direita
+            end = muda_Endereco(end);
+            token = strtok(str,"(,");
+            aux = strtok(NULL,")");
+            if(strcmp(aux,"0:19") == 0){
+               preencher_mapa(end,mapa,"0D", token);
+            }
+            else if(strcmp(aux,"20:39") == 0){
+               preencher_mapa(end,mapa,"0E", token);
+            }
+
+    }
+    else if(strcmp(str,  "JGEZ") == 0){
+    //verificar direita e esquerda
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            aux = strtok(NULL,")");
+            if(strcmp(aux,"0:19") == 0){
+               preencher_mapa(end,mapa,"0F", token);
+            }
+            else if(strcmp(aux,"20:39") == 0){
+               preencher_mapa(end,mapa,"10", token);
+            }
+    }
+    else if(strcmp(str,  "ADD") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"05",token);
+    }
+    else if(strcmp(str,  "ADDABS") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"07",token);
+    }
+    else if(strcmp(str,  "SUB") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"06",token);
+    }
+    else if(strcmp(str,  "SUBABS") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"08",token);
+    }
+    else if(strcmp(str,  "MUL") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"0B",token);
+    }
+    else if(strcmp(str,  "DIV") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"0C",token);
+    }
+    else if(strcmp(str,  "LSH") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"14","000");
+    }
+    else if(strcmp(str,  "RSH") == 0){
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            preencher_mapa(end,mapa,"15","000");
+    }
+    else if(strcmp(str,  "STM") == 0){
+        //se operando for instrcao a direita ou a esquerda.
+            end = muda_Endereco(end);
+            token = strtok(str,"()");
+            aux = strtok(NULL,")");
+            if(strcmp(aux,"8:19") == 0){
+               preencher_mapa(end,mapa,"12", token);
+            }
+            else if(strcmp(aux,"28:39") == 0){
+               preencher_mapa(end,mapa,"13", token);
+            }
+    }
+
+}
  /*------------------------------- NAO ALTERAR POR ENQUANTO ------------------------------*/
 
  /* IMPLEMENTAÇÃO DAS FUNÇÕES DE LISTA LIGADA */ 
