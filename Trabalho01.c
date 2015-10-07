@@ -2,30 +2,30 @@
 #include <string.h>
 #include <stdlib.h>
 
-
  typedef struct endereco{
 	int end, pos; /*0 esquerda 1 direita*/
  } endereco;
 
  typedef struct rotulo{
-	char nome[100];
+	char nome[101];
 	endereco endereco;
 	struct rotulo *prox;
  } rotulo;
  
  typedef struct palavras{
-	int num_linha, pal_esq,  pal_dir;
-	char inst_esq[2], inst_dir[2];
+	int num_linha, pal_esq,  pal_dir, pal_int;
+	char inst_esq[3], inst_dir[3];
 	struct palavras *prox;  
  } palavra;
  
  typedef struct nome{
- 	char carac[100];
+ 	char carac[101];
  	int valor;
  	struct nome *prox;
  } nome;
   
  /* Funcoes de reconhecimento de elementos de linguagem de montagem*/
+ void hexadecimal(palavra *mapa, FILE *saida);
  void diretivas(char *str, endereco *end, palavra *mapa, nome *lista);
  endereco muda_Endereco(endereco *end_);
  void preencher_mapa(palavra *inicio, endereco *end_, char instrucao[2], char *token);
@@ -100,6 +100,8 @@
 			token = strtok(NULL, delim);
 		}
    	}
+   	/* Ordena mapa de memoria */
+	OrdenaMapa(&mapa_mem);
 	
 	/* Volta ao inicio do arquivo e reseta o contador de posicao */
 	fseek(arq_entrada, 0, SEEK_SET);
@@ -130,11 +132,8 @@
 		}
    	}
 
-	/* Percorrer mapa de memoria e preencher vazios com zeros */
-	preencher_zeros(&mapa_mem);
-
 	/* Escrever arquivo de saida */
-	hexadecimal(&mapa_mem);
+	hexadecimal(&mapa_mem,arq_saida);
 
    	LiberaRotulos(&mapa_rot);
    	LiberaMapaPalavras(&mapa_mem);
@@ -148,6 +147,30 @@
  	return 0;
  }
 
+ void hexadecimal(palavra *mapa, FILE *saida){
+ 	char linha[5], pal_int[11], pal_esq[4], pal_dir[4];
+ 	palavra *temp;
+
+	for(temp = mapa->prox; temp != NULL; temp = temp->prox){
+		sprintf(&linha[0], "%04X", temp->num_linha);
+		fprintf(saida,"%s ",linha);
+		if(temp->pal_int != -1){
+			sprintf(&pal_int[0], "%010X", temp->pal_int);
+			fprintf(saida,"%c%c", pal_int[0], pal_int[1]);
+			fprintf(saida," %c%c%c ", pal_int[2], pal_int[3], pal_int[4]);
+			fprintf(saida,"%c%c", pal_int[5], pal_int[6]);
+			fprintf(saida," %c%c%c\n", pal_int[7], pal_int[8], pal_int[9]);
+		}
+		else{
+			fprintf(saida,"%s ", temp->inst_esq);
+			sprintf(&pal_esq[0], "%03X", temp->pal_esq);
+			fprintf(saida,"%s ",pal_esq);
+			fprintf(saida,"%s ", temp->inst_dir);
+			sprintf(&pal_dir[0], "%03X", temp->pal_dir);
+			fprintf(saida,"%s\n",pal_dir);
+ 		}
+ 	}
+ }
 
  void diretivas(char *str, endereco *end, palavra *mapa, nome *lista){
  	char delim[] = " ,\n";/*delimitadores dos tokens*/
@@ -202,9 +225,6 @@
 		/* Insere nomes na lista */
 		InsereNomeFim(lista,aux3,aux);
 	}
-	
-	printf("end: %d e pos: %d\n", (*end).end,(*end).pos);
-
  }
 
  endereco muda_Endereco(endereco *end_){
@@ -226,7 +246,7 @@
  }
 
   
- void preencher_mapa(palavra *inicio, endereco *end_, char instrucao[2], char *token){
+void preencher_mapa(palavra *inicio, endereco *end_, char instrucao[2], char *token){
 	palavra *novo,*temp;
 
 	/* Percorre a lista ate o fim ou ate encontrar a linha a ser preenchida */
@@ -249,50 +269,58 @@
     }else{
     		novo = (palavra*)malloc(sizeof(palavra));
 	  		novo->num_linha = end_->end;
-	  		temp->pal_int = -1;
+	  		novo->pal_int = -1;
 	  	if(end_->pos == 1){
 	  		novo->pal_dir = (int)strtol(token, NULL, 0);
-			strcpy(novo->inst_dir,instrucao);
+			novo->pal_esq = 0;
 	  		strcpy(novo->inst_esq,"00");
+			strcpy(novo->inst_dir,instrucao);
 	  	}else{
 	  		novo->pal_esq = (int)strtol(token, NULL, 0);
-			strcpy(novo->inst_esq,instrucao);
+			novo->pal_dir = 0;
 	  		strcpy(novo->inst_dir,"00");
+			strcpy(novo->inst_esq,instrucao);
 	  	}
 	  	novo->prox = NULL;
 	  	temp->prox = novo;   
-  
-  		OrdenaMapa(inicio,novo);
     }
  }
  
- void OrdenaMapa(palavra *inicio, palavra *novo){
- 	palavra *temp, *aux;
- 	int flag = 0;
+ void OrdenaMapa(palavra *inicio){
+ 	palavra *temp, *temp2, *aux, *aux2, *pos;
+ 	int num, teste;
+ 	 
+ 	for(temp = inicio->prox, temp2 = inicio->prox, pos = inicio->prox; temp->prox != NULL; temp = temp->prox){
+        num = temp->num_linha;
+        pos = temp;
+        for(aux = temp; aux->prox != NULL; aux = aux->prox){
+            teste = (*(aux->prox)).num_linha;
+            if(teste < num){
+                num = teste;
+                pos = aux;
+            }
+        }
+        if(num != temp->num_linha){
+            aux2 = pos->prox;
+            if(aux2!= NULL)
+                pos->prox = aux2->prox;
+            else
+                pos->prox = NULL;
+            if(pos != temp){
+                aux2->prox = temp->prox;
+                temp->prox = pos->prox;
+                pos->prox = temp;
+            }
+            else
+                aux2->prox = temp;
  
- 	/* Insere na posicao do mapa em ordem */
-  	temp = inicio;
-    if(temp->prox == NULL)
-    	temp->prox = novo;
-    else{	
-    	while(temp->prox!=NULL && !flag){
-    		if(temp->prox->num_linha >= novo->num_linha)
-				flag = 1;
-			else
-				temp = temp->prox;
-    	}	    
-    	if(!flag)
-			temp->prox = novo;
-    	else{
-    		if(temp->prox->num_linha == novo->num_linha){
-    			novo->prox = temp->prox->prox;
-    			temp->prox = novo;
-    		}else{
-				aux = temp->prox;
-				temp->prox = novo;
-				novo->prox = aux;
-    		}
-    	}
+            if(temp == inicio->prox)
+                inicio->prox = aux2;
+            else
+                temp2->prox = aux2;
+            temp = aux2;
+        }
+        temp2 = temp;
     }
  }
 
@@ -446,32 +474,15 @@ void instrucoes(char str[], endereco *end, palavra *mapa, rotulo *rot){
   	novo->pal_int = valor;
   	novo->pal_esq = -1;
   	novo->pal_dir = -1;
+	strcpy(novo->inst_esq,"\0");
+	strcpy(novo->inst_dir,"\0");
     novo->prox = NULL;
-
-	/* Insere na posicao do mapa em ordem */
+    
+    /* Percorre lista ate o fim e adiciona o noh */
     temp = inicio;
-    if(temp->prox == NULL)
-    	temp->prox = novo;
-    else{	
-      	while(temp->prox!=NULL && !flag){
-    		if(temp->prox->num_linha >= novo->num_linha)
-	  			flag = 1;
-			else
-	  			temp = temp->prox;
-      	}	    
-      	if(!flag)
-			temp->prox = novo;
-      	else{
-      		if(temp->prox->num_linha == novo->num_linha){
-      			novo->prox = temp->prox->prox;
-      			temp->prox = novo;
-      		}else{
-			aux = temp->prox;
-			temp->prox = novo;
-			novo->prox = aux;
-      		}
-      	}
-    }
+    while(temp->prox != NULL)
+    	temp = temp->prox;
+    temp->prox = novo;
  }
  
  void LiberaMapaPalavras(palavra *inicio) {
