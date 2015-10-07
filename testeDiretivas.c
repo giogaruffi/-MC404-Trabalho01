@@ -2,25 +2,24 @@
 #include <string.h>
 #include <stdlib.h>
 
-
  typedef struct endereco{
 	int end, pos; /*0 esquerda 1 direita*/
  } endereco;
 
  typedef struct rotulo{
-	char nome[100];
+	char nome[101];
 	endereco endereco;
 	struct rotulo *prox;
  } rotulo;
  
  typedef struct palavras{
 	int num_linha, pal_esq,  pal_dir, pal_int;
-	char inst_esq[2], inst_dir[2];
+	char inst_esq[3], inst_dir[3];
 	struct palavras *prox;  
  } palavra;
  
  typedef struct nome{
- 	char carac[100];
+ 	char carac[101];
  	int valor;
  	struct nome *prox;
  } nome;
@@ -39,7 +38,7 @@
  void InserePalavraMapa(palavra *inicio, int valor, int linha);
  void LiberaMapaPalavras(palavra *inicio);
  void preencher_mapa(palavra *inicio, endereco *end_, char instrucao[2], char *token);
- void OrdenaMapa(palavra *inicio, palavra *novo);
+ void OrdenaMapa(palavra *inicio);
  void ImprimePalavras(palavra *inicio);
  endereco muda_Endereco(endereco *end_);
  /* Funcoes de Listas Ligadas para os nomes setados */
@@ -98,6 +97,9 @@
 			token = strtok(NULL, delim);
 		}
    	}
+ 
+	OrdenaMapa(&mapa_mem);
+        
    	
    	printf("Mapa rotulos\n");
 	ImprimeRotulos(&mapa_rot);  	
@@ -263,7 +265,6 @@
 
 	return (*end_);
  }
- 
    
  void preencher_mapa(palavra *inicio, endereco *end_, char instrucao[2], char *token){
 	palavra *novo,*temp;
@@ -288,50 +289,58 @@
     }else{
     		novo = (palavra*)malloc(sizeof(palavra));
 	  		novo->num_linha = end_->end;
-	  		temp->pal_int = -1;
+	  		novo->pal_int = -1;
 	  	if(end_->pos == 1){
 	  		novo->pal_dir = (int)strtol(token, NULL, 0);
-			strcpy(novo->inst_dir,instrucao);
+			novo->pal_esq = 0;
 	  		strcpy(novo->inst_esq,"00");
+			strcpy(novo->inst_dir,instrucao);
 	  	}else{
 	  		novo->pal_esq = (int)strtol(token, NULL, 0);
-			strcpy(novo->inst_esq,instrucao);
+			novo->pal_dir = 0;
 	  		strcpy(novo->inst_dir,"00");
+			strcpy(novo->inst_esq,instrucao);
 	  	}
 	  	novo->prox = NULL;
 	  	temp->prox = novo;   
-  
-  		OrdenaMapa(inicio,novo);
     }
  }
  
- void OrdenaMapa(palavra *inicio, palavra *novo){
- 	palavra *temp, *aux;
- 	int flag = 0;
+ void OrdenaMapa(palavra *inicio){
+ 	palavra *temp, *temp2, *aux, *aux2, *pos;
+ 	int num, teste;
+ 	 
+ 	for(temp = inicio->prox, temp2 = inicio->prox, pos = inicio->prox; temp->prox != NULL; temp = temp->prox){
+        num = temp->num_linha;
+        pos = temp;
+        for(aux = temp; aux->prox != NULL; aux = aux->prox){
+            teste = (*(aux->prox)).num_linha;
+            if(teste < num){
+                num = teste;
+                pos = aux;
+            }
+        }
+        if(num != temp->num_linha){
+            aux2 = pos->prox;
+            if(aux2!= NULL)
+                pos->prox = aux2->prox;
+            else
+                pos->prox = NULL;
+            if(pos != temp){
+                aux2->prox = temp->prox;
+                temp->prox = pos->prox;
+                pos->prox = temp;
+            }
+            else
+                aux2->prox = temp;
  
- 	/* Insere na posicao do mapa em ordem */
-  	temp = inicio;
-    if(temp->prox == NULL)
-    	temp->prox = novo;
-    else{	
-    	while(temp->prox!=NULL && !flag){
-    		if(temp->prox->num_linha >= novo->num_linha)
-				flag = 1;
-			else
-				temp = temp->prox;
-    	}	    
-    	if(!flag)
-			temp->prox = novo;
-    	else{
-    		if(temp->prox->num_linha == novo->num_linha){
-    			novo->prox = temp->prox->prox;
-    			temp->prox = novo;
-    		}else{
-				aux = temp->prox;
-				temp->prox = novo;
-				novo->prox = aux;
-    		}
-    	}
+            if(temp == inicio->prox)
+                inicio->prox = aux2;
+            else
+                temp2->prox = aux2;
+            temp = aux2;
+        }
+        temp2 = temp;
     }
  }
  
@@ -344,32 +353,15 @@
   	novo->pal_int = valor;
   	novo->pal_esq = -1;
   	novo->pal_dir = -1;
+	strcpy(novo->inst_esq,"\0");
+	strcpy(novo->inst_dir,"\0");
     novo->prox = NULL;
-
-	/* Insere na posicao do mapa em ordem */
+    
+    /* Percorre lista ate o fim e adiciona o noh */
     temp = inicio;
-    if(temp->prox == NULL)
-    	temp->prox = novo;
-    else{	
-      	while(temp->prox!=NULL && !flag){
-    		if(temp->prox->num_linha >= novo->num_linha)
-	  			flag = 1;
-			else
-	  			temp = temp->prox;
-      	}	    
-      	if(!flag)
-			temp->prox = novo;
-      	else{
-      		if(temp->prox->num_linha == novo->num_linha){
-      			novo->prox = temp->prox->prox;
-      			temp->prox = novo;
-      		}else{
-			aux = temp->prox;
-			temp->prox = novo;
-			novo->prox = aux;
-      		}
-      	}
-    }
+    while(temp->prox != NULL)
+    	temp = temp->prox;
+    temp->prox = novo;
  }
 
  void LiberaMapaPalavras(palavra *inicio) {
